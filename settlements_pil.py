@@ -2,6 +2,7 @@ import random, json, os, math, sys
 from operator import itemgetter
 from PIL import Image, ImageDraw
  
+#house representation
 class House(object):
 	"""House is a class to hold to render them on the screen"""
 	pos = (0,0)
@@ -20,6 +21,8 @@ class House(object):
 	def render(self, draw):
 		draw.rectangle([self.render_pos, self.offset_size], outline="#FFFFFF" , fill="#3B1D09")
 
+#NOT USED
+# ==============================
 class HouseGroup(object):
 
 	def __init__(self):
@@ -29,27 +32,40 @@ class HouseGroup(object):
 
 	def add_house(self, house):
 		self.house.append(house)
+# ==============================
 		
-		
-
+# global size
 total_x = None
 total_y = None
+
+# terrain json objects
 total_detail = []
 
+# matrix of favourable terrain
+# 0.0 - worst possible
+# 1.0 - house can be placed
 terrain_rating = []
 
+# matrix of favourable tiles surrounding other houses
+# -1.0 - fresh unrated tile
+# 0.0 - unusable tiles
+# higher than 0.0 - considered for house placement
 house_rating = []
 max_house_rating = 0
 
+# not used
 group_house_points = []
 
+# used for recalculating terrain
 last_placed_house = None
+# list of present houses
 houses = []
 
+# candidate points for placing houses
 candidates = []
 
 
-#read maps in
+#read maps in and fill the total_detail array
 
 def read_map_files():
 
@@ -88,6 +104,7 @@ def terrain_rating_circle(object, size = 10):
 				value = float(dist)/float(size)
 				terrain_rating[yi][xi] = min(terrain_rating[yi][xi], value)
 
+# rerun the terrain raiting for all the cliff tiles
 def recalculate_terrain_rating(size):
 
 	global total_detail
@@ -95,6 +112,7 @@ def recalculate_terrain_rating(size):
 
 		terrain_rating_circle(cliff, size=size)
 
+# place initial house
 def place_first_house():
 	global candidates
 	global houses
@@ -114,6 +132,7 @@ def place_first_house():
 	houses.append(h)
 	return h
 
+# grow the village by one house
 def place_house(size = (4,4), attraction = 1):
 
 	#if called before first house by accident
@@ -141,7 +160,7 @@ def place_house(size = (4,4), attraction = 1):
 	houses.append(h)
 	return h
 
-
+# rate the tiles surrounding the house
 def house_rating_circle(house, size = 80):
 	if house == None: return
 
@@ -172,26 +191,16 @@ def house_rating_circle(house, size = 80):
 
 			v = -k * (dist**(steepness) - t_too_close) * (dist - t_too_far)
 
-			
-			# v = max(-1,v)
 			if dist < t_too_close:
 				v = 0
 			elif dist > t_too_far:
-				# v = -1
+
 				continue
 
-
-			# if v > 0:
-			# 	print t_too_close, t_too_far, dist, v
-
-			# if house_rating[yi][xi] > -1.0:
-			# 	house_rating[yi][xi] = min(house_rating[yi][xi], v)
-			# else:
 			
 			if terrain_rating[yi][xi] >= 1:
 				
 				if house_rating[yi][xi] >= 0:
-					# house_rating[yi][xi] = min(house_rating[yi][xi], v)
 					house_rating[yi][xi] = (house_rating[yi][xi] * v)
 				else:
 					house_rating[yi][xi] = v
@@ -224,7 +233,6 @@ for cliff in total_detail:
 	y = int(cliff["y"])
 
 	draw.point((x,y), "white")
-	#screen.fill((255,255,255), ((x,y), (1,1)))
 
 	terrain_rating_circle(cliff)
 
@@ -233,25 +241,19 @@ for y in xrange(0, len(terrain_rating)):
 
 		if terrain_rating[y][x]>0:
 			draw.point((x,y), (0, int(terrain_rating[y][x] * 255),0))
-			#screen.fill(((1-terrain_rating[y][x]) * 255,0,0), ((x,y), (1,1)))
-			#screen.fill((0, (terrain_rating[y][x]) * 255,0), ((x,y), (1,1)))
-
-
-
-
 
 house_rating_circle(place_first_house())
 
 house_size = 4
 for x in range(int(sys.argv[1])):
-	# if x % 10 == 0:
-	# 	house_rating_circle(place_house(attraction = 4))
-	# else:
+
+	# once in 10 use a large house
 	if x % 10 == 0:
 		house_size = 8
 	else:
 		house_size = 4
 
+	# if the size has changed, recalculate the terrain rating
 	if last_placed_house:
 		sx, sy = last_placed_house.size
 		last_s = max(sx,sy)
@@ -271,21 +273,13 @@ for h in houses:
 	
 
 
-
-
-
 for y in xrange(0, len(house_rating)):
 	for x in xrange(0, len(house_rating)):
-
-		# if house_rating[y][x]>0:
-
 		blue = house_rating[y][x] / max_house_rating
 		if blue > 0:
 			
-			# blue = house_rating[y][x]			
 			draw.point((x,y), (0, 0, int(blue * 255)))
-		# else:
-		# 	draw.point((x,y), (255, 0, 0))
+		
 
 img_filename = "out" + str(sys.argv[1]) + ".png"
 img.save(img_filename )
